@@ -8,7 +8,11 @@ from datetime import datetime
 # ============================
 # 設定區
 # ============================
-GAS_API_URL = "https://script.google.com/macros/s/AKfycbwaVldqz1m-TKZy8GXltpmbi46tK3pq7bDCESK38uh3Uo-MAeSEkHbW55uQw7muIpHn/exec"
+# 讀取 Secrets，如果本地執行則讀取不到，需處理異常
+try:
+    GAS_API_URL = st.secrets["GAS_API_URL"]
+except KeyError:
+    GAS_API_URL = "本地測試用的URL" # 您本地的 GAS API
 st.set_page_config(page_title="BBM 智慧監控儀表板", layout="wide")
 
 # ============================
