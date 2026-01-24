@@ -106,27 +106,32 @@ def main():
         })
         st.table(actual_df)
 
-    with col_right:
-        st.subheader("🎯 7年翻倍目標追蹤")
-        
-        goal = data['goal']
-        progress = goal['progressPct']
-        ideal = goal['idealValue']
-        target = goal['targetValue']
-        total = data['portfolio']['totalValue']
-        
-        # 進度條
-        st.progress(progress / 100)
-        st.write(f"距離起點已過 **{goal['daysPassed']}** 天 (總進度 {progress:.1f}%)")
-        
-        # 判斷狀態
-        if total >= ideal:
-            st.success(f"✅ **狀況優良** (目前資產高於理想進度曲線)")
-            st.write(f"理想值: NT$ {ideal:,} | 目前值: NT$ {total:,}")
-        else:
-            st.warning(f"⚠️ **需加強** (目前資產低於理想進度曲線)")
-            shortfall = ideal - total
-            st.write(f"理想值: NT$ {ideal:,} | 差距: NT$ {shortfall:,}")
+        with col_right:
+            st.subheader("🎯 7年翻倍目標追蹤")
+            
+            goal = data['goal']
+            progress = goal['progressPct']
+            ideal = goal['idealValue']
+            target = goal['targetValue']
+            total = data['portfolio']['totalValue']
+            
+            # 🔧 修正：使用 .get() 方法，如果找不到 daysPassed 就預設為 0
+            days_passed = goal.get('daysPassed', 0) 
+            
+            # 進度條
+            st.progress(progress / 100)
+            # 這一行現在不會報錯了
+            st.write(f"距離起點已過 **{days_passed}** 天 (總進度 {progress:.1f}%)")
+            
+            # 判斷狀態
+            if total >= ideal:
+                st.success(f"✅ **狀況優良** (目前資產高於理想進度曲線)")
+                st.write(f"理想值: NT$ {ideal:,} | 目前值: NT$ {total:,}")
+            else:
+                st.warning(f"⚠️ **需加強** (目前資產低於理想進度曲線)")
+                shortfall = ideal - total
+                st.write(f"理想值: NT$ {ideal:,} | 差距: NT$ {shortfall:,}")
+
 
     # ==========================================
     # 3. 警報與通知
@@ -145,3 +150,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
