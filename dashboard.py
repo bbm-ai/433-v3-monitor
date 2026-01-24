@@ -19,12 +19,12 @@ except KeyError:
 # ========================================
 def main():
     st.set_page_config(
-        page_title="433-v3 監控儀表板",
+        page_title="BBM監控儀表板",
         page_icon="📊",
         layout="wide"
     )
 
-    st.title("📊 433-v3 策略監控儀表板")
+    st.title("📊 BBM 策略監控儀表板")
 
     # 獲取數據
     try:
@@ -150,4 +150,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
