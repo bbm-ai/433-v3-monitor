@@ -6,3 +6,4 @@ streamlit
 plotly
 # 最關鍵的一行：鎖定 altair 為 4.x 版本 (例如 4.2.2 或 5.0 之前的版本)
 altair==4.2.2
+matplotlib==3.8.2
