@@ -62,10 +62,10 @@ print(f"{'✅ 達標' if annual_return * 100 >= 17 else '❌ 未達標'}")
 # 保存
 output = {
     'timestamp': datetime.now().isoformat(),
-    'annual_return': annual_return * 100,
-    'final_capital': final,
-    'meets_target': annual_return * 100 >= 17
+    'annual_return': float(annual_return * 100),
+    'final_capital': float(final),
+    'meets_target': bool(annual_return * 100 >= 17)
 }
 
-with open('data/backtest.json', 'w') as f:
+with open('data/backtest.json', 'w', encoding='utf-8') as f:
     json.dump(output, f, indent=2)
