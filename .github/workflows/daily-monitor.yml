@@ -1,148 +1,36 @@
-name: Daily 433-v3 Monitor
+name: Daily MA Update
 
 on:
   schedule:
-    # 每天 UTC 14:00 (台北時間 22:00)
-    - cron: '0 14 * * *'
-  workflow_dispatch:  # 允許手動觸發
+    - cron: '0 14 * * 1-5'
+  workflow_dispatch:
 
 jobs:
-  monitor:
+  update:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-          cache: 'pip'
       
-      - name: Install dependencies
+      - name: Install
+        run: pip install -r requirements.txt
+      
+      - name: Update Signals
+        run: python scripts/update_signals.py
+      
+      - name: Notify
         run: |
-          pip install yfinance pandas numpy requests gspread oauth2client pyyaml
+          curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=MA訊號已更新 $(date)"
       
-      - name: Fetch market data
-        id: fetch
-        run: |
-          python src/fetcher.py > market_data.json
-          echo "data=$(cat market_data.json)" >> $GITHUB_OUTPUT
-      
-      - name: Calculate strategy
-        run: |
-          python -c "
-          import json
-          from src.calculator import StrategyCalculator
-          from src.fetcher import MarketDataFetcher
-          
-          # 讀取市場數據
-          with open('market_data.json', 'r') as f:
-              market_data = json.load(f)
-          
-          # 獲取槓桿 ATH
-          ath = MarketDataFetcher.fetch_historical_high('00670L.TW')
-          
-          # 計算回撤
-          current_price = market_data['leverage']['price']
-          drawdown = StrategyCalculator.calculate_drawdown(current_price, ath)
-          
-          # 模擬當前權重（實際應從 Google Sheets 讀取）
-          current_weights = {'core': 40, 'leverage': 30, 'cash': 30}
-          
-          # 檢查調整
-          adjustment = StrategyCalculator.check_adjustment_needed(drawdown, current_weights)
-          
-          # 保存結果
-          result = {
-              'market_data': market_data,
-              'ath': ath,
-              'drawdown': drawdown,
-              'adjustment': adjustment
-          }
-          
-          with open('analysis.json', 'w') as f:
-              json.dump(result, f, indent=2)
-          
-          print('Analysis completed')
-          "
-      
-      - name: Check risks
-        run: |
-          python -c "
-          import json
-          from src.risk_checker import RiskChecker
-          
-          # 模擬投資組合數據（實際應從 Google Sheets 讀取）
-          portfolio = {
-              'total_value': 10000000,
-              'pledge_amount': 1500000,
-              'maintenance_rate': 250,
-              'cash_value': 3000000
-          }
-          
-          risks = RiskChecker.check_risks(portfolio)
-          
-          with open('risks.json', 'w') as f:
-              json.dump(risks, f, indent=2)
-          
-          if risks:
-              print(f'⚠️  發現 {len(risks)} 個風險警報')
-              for risk in risks:
-                  print(f'{risk[\"level\"]}: {risk[\"message\"]}')
-          "
-      
-      - name: Generate report
-        run: |
-          DATE=$(date +%Y-%m-%d)
-          mkdir -p reports/daily
-          
-          cat > reports/daily/report_${DATE}.md << 'EOF'
-          # 433-v3 監控報告
-          
-          **日期**: $(date +%Y-%m-%d)
-          
-          ## 市場數據
-          $(cat market_data.json | jq '.')
-          
-          ## 策略分析
-          $(cat analysis.json | jq '.')
-          
-          ## 風險檢查
-          $(cat risks.json | jq '.')
-          EOF
-      
-      - name: Upload to GCP VM
-        run: |
-          # 將數據上傳到 GCP VM
-          scp -o StrictHostKeyChecking=no \
-              market_data.json \
-              analysis.json \
-              risks.json \
-              ${{ secrets.GCP_USER }}@${{ secrets.GCP_HOST }}:/var/www/html/433-monitor/data/
-        env:
-          SSH_KEY: ${{ secrets.GCP_SSH_KEY }}
-      
-      - name: Send Discord notification
-        if: always()
-        run: |
-          WEBHOOK="${{ secrets.DISCORD_WEBHOOK }}"
-          
-          if [ -s risks.json ] && [ "$(jq length risks.json)" -gt 0 ]; then
-            MESSAGE="🚨 **433-v3 風險警報**\n\n$(cat risks.json | jq -r '.[] | \"⚠️  \(.message)\"')"
-          else
-            MESSAGE="✅ **433-v3 每日監控**\n\n無風險警報"
-          fi
-          
-          curl -X POST "$WEBHOOK" \
-            -H "Content-Type: application/json" \
-            -d "{\"content\": \"$MESSAGE\"}"
-      
-      - name: Commit report
+      - name: Commit
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add reports/
-          git commit -m "Add daily report $(date +%Y-%m-%d)" || echo "No changes"
+          git add data/
+          git commit -m "Update $(date +%Y-%m-%d)" || echo "No changes"
           git push
