@@ -1,0 +1,36 @@
+name: Weekly Backtest
+
+on:
+  schedule:
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - run: pip install -r requirements.txt
+      - run: python scripts/backtest.py
+      
+      - name: Check Target
+        run: |
+          IRR=$(jq -r '.annual_return' data/backtest.json)
+          echo "IRR: $IRR%"
+          
+          if (( $(echo "$IRR < 17" | bc -l) )); then
+            curl -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -d "text=⚠️ 警告：IRR ${IRR}% 低於目標 17%"
+          fi
+      
+      - run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/
+          git commit -m "Backtest $(date +%Y-%m-%d)" || echo "No changes"
+          git push
